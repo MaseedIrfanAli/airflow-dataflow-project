@@ -20,25 +20,32 @@ pipeline {
     stage('Set Version') {
       steps {
         script {
-          GIT_COMMIT_SHORT = sh(
+          GIT_HASH = sh(
             script: "git rev-parse --short HEAD",
             returnStdout: true
           ).trim()
-          IMAGE_TAG = "git-${GIT_COMMIT_SHORT}"
+          IMAGE_TAG = "git-${GIT_HASH}"
         }
       }
     }
 
-    stage('Build & Push Image') {
+    stage('Build Docker Image') {
       steps {
         sh """
         docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG} dataflow
+        """
+      }
+    }
+
+    stage('Push to Artifact Registry') {
+      steps {
+        sh """
         docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
         """
       }
     }
 
-    stage('Build Flex Template') {
+    stage('Build Dataflow Flex Template') {
       steps {
         sh """
         gcloud dataflow flex-template build \
@@ -52,7 +59,7 @@ pipeline {
 
   post {
     success {
-      echo "Flex Template built with image tag: ${IMAGE_TAG}"
+      echo "Template built: bq_to_bq_${IMAGE_TAG}.json"
     }
   }
 }
