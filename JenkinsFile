@@ -1,0 +1,58 @@
+pipeline {
+  agent any
+
+  environment {
+    PROJECT_ID = "bamboo-autumn-484913-i0"
+    REGION = "us-central1"
+    AR_REPO = "dataflow-repo"
+    IMAGE_NAME = "bq-dataflow"
+    TEMPLATE_BUCKET = "interview-dataflow-templates"
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Set Version') {
+      steps {
+        script {
+          GIT_COMMIT_SHORT = sh(
+            script: "git rev-parse --short HEAD",
+            returnStdout: true
+          ).trim()
+          IMAGE_TAG = "git-${GIT_COMMIT_SHORT}"
+        }
+      }
+    }
+
+    stage('Build & Push Image') {
+      steps {
+        sh """
+        docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG} dataflow
+        docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
+        """
+      }
+    }
+
+    stage('Build Flex Template') {
+      steps {
+        sh """
+        gcloud dataflow flex-template build \
+        gs://${TEMPLATE_BUCKET}/bq_to_bq_${IMAGE_TAG}.json \
+        --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG} \
+        --sdk-language PYTHON
+        """
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Flex Template built with image tag: ${IMAGE_TAG}"
+    }
+  }
+}
