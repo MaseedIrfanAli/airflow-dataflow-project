@@ -8,9 +8,8 @@ pipeline {
     IMAGE_NAME      = "bq-dataflow"
     TEMPLATE_BUCKET = "interview-dataflow-templates"
 
-    // 🔥 Versioning using Jenkins build number
-    IMAGE_TAG   = "build-${env.BUILD_NUMBER}"
-    IMAGE_URI   = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
+    IMAGE_TAG    = "build-${env.BUILD_NUMBER}"
+    IMAGE_URI    = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
     TEMPLATE_URI = "gs://${TEMPLATE_BUCKET}/bq_to_bq_${IMAGE_TAG}.json"
   }
 
@@ -24,17 +23,13 @@ pipeline {
 
     stage('Build Docker Image') {
       steps {
-        sh """
-          docker build -t ${IMAGE_URI} dataflow
-        """
+        sh "docker build -t ${IMAGE_URI} dataflow"
       }
     }
 
     stage('Push to Artifact Registry') {
       steps {
-        sh """
-          docker push ${IMAGE_URI}
-        """
+        sh "docker push ${IMAGE_URI}"
       }
     }
 
@@ -44,6 +39,7 @@ pipeline {
           gcloud dataflow flex-template build ${TEMPLATE_URI} \
             --image ${IMAGE_URI} \
             --sdk-language PYTHON \
+            --metadata-file dataflow/metadata.json \
             --region ${REGION}
         """
       }
