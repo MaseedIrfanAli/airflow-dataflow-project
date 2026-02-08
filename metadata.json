@@ -1,0 +1,16 @@
+{
+  "name": "BQ to BQ Flex Template",
+  "description": "BigQuery to BigQuery Dataflow Flex Template",
+  "parameters": [
+    {
+      "name": "input_table",
+      "label": "Input BigQuery Table",
+      "helpText": "Format: project:dataset.table"
+    },
+    {
+      "name": "output_table",
+      "label": "Output BigQuery Table",
+      "helpText": "Format: project:dataset.table"
+    }
+  ]
+}
