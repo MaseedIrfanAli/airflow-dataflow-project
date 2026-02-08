@@ -2,11 +2,16 @@ pipeline {
   agent any
 
   environment {
-    PROJECT_ID = "bamboo-autumn-484913-i0"
-    REGION = "us-central1"
-    AR_REPO = "dataflow-repo"
-    IMAGE_NAME = "bq-dataflow"
+    PROJECT_ID      = "bamboo-autumn-484913-i0"
+    REGION          = "us-central1"
+    AR_REPO         = "dataflow-repo"
+    IMAGE_NAME      = "bq-dataflow"
     TEMPLATE_BUCKET = "interview-dataflow-templates"
+
+    // 🔥 Versioning using Jenkins build number
+    IMAGE_TAG   = "build-${env.BUILD_NUMBER}"
+    IMAGE_URI   = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
+    TEMPLATE_URI = "gs://${TEMPLATE_BUCKET}/bq_to_bq_${IMAGE_TAG}.json"
   }
 
   stages {
@@ -17,22 +22,10 @@ pipeline {
       }
     }
 
-    stage('Set Version') {
-      steps {
-        script {
-          GIT_HASH = sh(
-            script: "git rev-parse --short HEAD",
-            returnStdout: true
-          ).trim()
-          IMAGE_TAG = "git-${GIT_HASH}"
-        }
-      }
-    }
-
     stage('Build Docker Image') {
       steps {
         sh """
-        docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG} dataflow
+          docker build -t ${IMAGE_URI} dataflow
         """
       }
     }
@@ -40,7 +33,7 @@ pipeline {
     stage('Push to Artifact Registry') {
       steps {
         sh """
-        docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
+          docker push ${IMAGE_URI}
         """
       }
     }
@@ -48,10 +41,10 @@ pipeline {
     stage('Build Dataflow Flex Template') {
       steps {
         sh """
-        gcloud dataflow flex-template build \
-        gs://${TEMPLATE_BUCKET}/bq_to_bq_${IMAGE_TAG}.json \
-        --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG} \
-        --sdk-language PYTHON
+          gcloud dataflow flex-template build ${TEMPLATE_URI} \
+            --image ${IMAGE_URI} \
+            --sdk-language PYTHON \
+            --region ${REGION}
         """
       }
     }
@@ -59,7 +52,8 @@ pipeline {
 
   post {
     success {
-      echo "Template built: bq_to_bq_${IMAGE_TAG}.json"
+      echo "✅ Docker Image: ${IMAGE_URI}"
+      echo "✅ Flex Template: ${TEMPLATE_URI}"
     }
   }
 }
