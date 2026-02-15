@@ -1,6 +1,15 @@
-FROM apache/beam_python3.10_sdk:2.53.0
-COPY . /pipeline
-WORKDIR /pipeline
-Run pip install apache-beam[gcp]==2.53.0
+# REQUIRED base image for Flex Templates
+FROM gcr.io/dataflow-templates-base/python3-template-launcher-base
 
-ENTRYPOINT ["python", [main.py]
+# Set working directory
+WORKDIR /template
+
+# Copy your pipeline code
+COPY . /template
+
+# Install dependencies
+RUN pip install --no-cache-dir apache-beam[gcp]==2.53.0
+
+# Required environment variables for Flex Templates
+ENV FLEX_TEMPLATE_PYTHON_PY_FILE="main.py"
+ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=""
