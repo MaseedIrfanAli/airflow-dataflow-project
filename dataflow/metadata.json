@@ -5,12 +5,12 @@
     {
       "name": "input_table",
       "label": "Input BigQuery Table",
-      "helpText": "Format: project:dataset.table"
+      "helpText": "Format: project.dataset.table"
     },
     {
       "name": "output_table",
       "label": "Output BigQuery Table",
-      "helpText": "Format: project:dataset.table"
+      "helpText": "Format: project.dataset.table"
     }
   ]
 }
