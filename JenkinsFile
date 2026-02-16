@@ -8,7 +8,6 @@ pipeline {
     IMAGE_NAME      = "bq-dataflow"
     TEMPLATE_BUCKET = "interview-dataflow-templates"
 
-    // 🔥 Versioning using Jenkins build number
     IMAGE_TAG     = "build-${env.BUILD_NUMBER}"
     IMAGE_URI     = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
     TEMPLATE_URI  = "gs://${TEMPLATE_BUCKET}/bq_to_bq_${IMAGE_TAG}.json"
@@ -22,9 +21,16 @@ pipeline {
       }
     }
 
+    stage('Set GCP Project') {
+      steps {
+        sh "gcloud config set project ${PROJECT_ID}"
+      }
+    }
+
     stage('Build Docker Image') {
       steps {
         sh """
+          set -e
           docker build -t ${IMAGE_URI} dataflow
         """
       }
@@ -33,6 +39,7 @@ pipeline {
     stage('Push to Artifact Registry') {
       steps {
         sh """
+          set -e
           docker push ${IMAGE_URI}
         """
       }
@@ -41,10 +48,13 @@ pipeline {
     stage('Build Dataflow Flex Template') {
       steps {
         sh """
+          set -e
           gcloud dataflow flex-template build ${TEMPLATE_URI} \
             --image ${IMAGE_URI} \
             --sdk-language PYTHON \
-            --metadata-file dataflow/metadata.json
+            --metadata-file dataflow/metadata.json \
+            --staging-location gs://${TEMPLATE_BUCKET}/staging \
+            --temp-location gs://${TEMPLATE_BUCKET}/temp
         """
       }
     }
@@ -52,15 +62,11 @@ pipeline {
 
   post {
     success {
-      echo "✅ Docker Image pushed:"
-      echo "   ${IMAGE_URI}"
-
-      echo "✅ Dataflow Flex Template created:"
-      echo "   ${TEMPLATE_URI}"
+      echo "✅ Docker Image: ${IMAGE_URI}"
+      echo "✅ Flex Template: ${TEMPLATE_URI}"
     }
-
     failure {
-      echo "❌ Pipeline failed. Check logs above."
+      echo "❌ Pipeline failed."
     }
   }
 }
